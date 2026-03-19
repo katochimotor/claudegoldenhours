@@ -12,7 +12,7 @@ import autostart
 import settings
 
 DIALOG_W = 300
-DIALOG_H = 310
+DIALOG_H = 345
 RADIUS   = 18
 
 
@@ -90,6 +90,10 @@ class SettingsDialog(QWidget):
         self._cb_marquee.setChecked(self._cfg.get("marquee_enabled", True))
         self._cb_marquee.toggled.connect(lambda v: self._save("marquee_enabled", v))
 
+        self._cb_compact = _StyledCheckBox("Компактная полоса при сворачивании")
+        self._cb_compact.setChecked(self._cfg.get("compact_mode", True))
+        self._cb_compact.toggled.connect(lambda v: self._save("compact_mode", v))
+
         self._cb_autostart = _StyledCheckBox("Запускать с Windows")
         self._cb_autostart.setChecked(autostart.is_enabled())
         self._cb_autostart.toggled.connect(self._toggle_autostart)
@@ -98,6 +102,7 @@ class SettingsDialog(QWidget):
         layout.addWidget(self._cb_popup_start)
         layout.addWidget(self._cb_popup_end)
         layout.addWidget(self._cb_marquee)
+        layout.addWidget(self._cb_compact)
         layout.addWidget(self._cb_autostart)
         layout.addStretch()
 
@@ -191,4 +196,5 @@ class SettingsDialog(QWidget):
         self._cb_popup_start.setChecked(self._cfg.get("popup_on_golden_start", True))
         self._cb_popup_end.setChecked(self._cfg.get("popup_before_golden_end", True))
         self._cb_marquee.setChecked(self._cfg.get("marquee_enabled", True))
+        self._cb_compact.setChecked(self._cfg.get("compact_mode", True))
         self._cb_autostart.setChecked(autostart.is_enabled())

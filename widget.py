@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import math
 from datetime import datetime
 
@@ -28,6 +29,7 @@ MARQUEE_SPEED = 0.7    # px per animation frame (~30fps)
 class GoldenHoursWidget(QWidget):
     state_changed = pyqtSignal(str)
     request_popup = pyqtSignal()
+    visibility_changed = pyqtSignal(bool)
 
     def __init__(self, build_number: int = 0):
         super().__init__()
@@ -118,9 +120,6 @@ class GoldenHoursWidget(QWidget):
             return
 
         geo = self.geometry()
-        # Grab screen including our widget — with heavy blur it's invisible.
-        # Use device pixel ratio for HiDPI.
-        dpr = screen.devicePixelRatio()
         grab = screen.grabWindow(
             0,
             geo.x(), geo.y(),
@@ -129,7 +128,10 @@ class GoldenHoursWidget(QWidget):
         if grab.isNull():
             return
 
+        old = self._bg_blur
         self._bg_blur = self._blur_pixmap(grab, radius=35)
+        del old, grab
+        gc.collect(0)  # lightweight gen-0 collection
 
     @staticmethod
     def _blur_pixmap(src: QPixmap, radius: int = 35) -> QPixmap:
@@ -157,6 +159,12 @@ class GoldenHoursWidget(QWidget):
         painter = QPainter(result)
         scene.render(painter)
         painter.end()
+
+        # Explicitly clean up Qt objects to prevent memory leaks
+        scene.removeItem(item)
+        item.setGraphicsEffect(None)
+        del blur, item, scene
+
         return QPixmap.fromImage(result)
 
     # ── Marquee ──────────────────────────────────────────────────────────────
@@ -405,7 +413,7 @@ class GoldenHoursWidget(QWidget):
             # Time hint
             next_et = self._status.get("next_transition_et")
             if next_et:
-                hint = next_et.strftime("в %H:%M ET")
+                hint = "\u0432 " + next_et.strftime("%H:%M") + " ET"
                 p.setFont(self._font_info)
                 p.setPen(QPen(QColor(160, 160, 180, 130)))
                 p.drawText(QRectF(LM, 120, w - LM * 2, 14), Qt.AlignLeft, hint)
@@ -498,6 +506,22 @@ class GoldenHoursWidget(QWidget):
     def _open_settings(self):
         self._settings_requested = True
         self.request_popup.emit()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.visibility_changed.emit(True)
+        # Resume expensive timers
+        self._anim_timer.start(33)
+        self._bg_timer.start(1500)
+        QTimer.singleShot(200, self._grab_background)
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.visibility_changed.emit(False)
+        # Pause expensive timers while hidden — saves CPU & memory
+        self._anim_timer.stop()
+        self._bg_timer.stop()
+        self._bg_blur = None  # free cached pixmap
 
     def reload_settings(self):
         self._cfg = settings.load()

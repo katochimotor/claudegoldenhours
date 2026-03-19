@@ -3,7 +3,8 @@ __pycache__/
 *.pyo
 .claude/
 *.egg-info/
-dist/
 build/
 *.spec
+dist/ClaudeGoldenHours_debug.exe
+dist/*.log
 assets/screenshot.png

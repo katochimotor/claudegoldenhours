@@ -17,6 +17,7 @@ DEFAULTS: dict = {
     "popup_on_golden_start": True,
     "popup_before_golden_end": True,
     "marquee_enabled": True,
+    "compact_mode": True,
 }
 
 
