@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pyo
+.claude/
+*.egg-info/
+dist/
+build/
+*.spec
+assets/screenshot.png
