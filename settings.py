@@ -18,6 +18,7 @@ DEFAULTS: dict = {
     "popup_before_golden_end": True,
     "marquee_enabled": True,
     "compact_mode": True,
+    "show_usage_stats": True,
 }
 
 

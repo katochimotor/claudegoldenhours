@@ -18,9 +18,10 @@ from PyQt5.QtWidgets import QApplication, QGraphicsBlurEffect, QGraphicsScene, Q
 import logic
 import settings
 import sound
+import usage_reader
 
 WIDGET_W = 330
-WIDGET_H = 210
+WIDGET_H = 248
 RADIUS   = 22
 
 MARQUEE_SPEED = 0.7    # px per animation frame (~30fps)
@@ -47,6 +48,9 @@ class GoldenHoursWidget(QWidget):
 
         # Background blur cache
         self._bg_blur: QPixmap | None = None
+
+        # Claude Code usage stats (refreshed every 60s)
+        self._usage: dict = {}
 
         # Auto-popup flags
         self._popup_golden_fired = False
@@ -100,7 +104,13 @@ class GoldenHoursWidget(QWidget):
         self._bg_timer.timeout.connect(self._grab_background)
         self._bg_timer.start(1500)
 
+        # Refresh Claude Code usage stats every 60s
+        self._usage_timer = QTimer(self)
+        self._usage_timer.timeout.connect(self._refresh_usage)
+        self._usage_timer.start(60_000)
+
         self._on_tick()
+        self._refresh_usage()
         QTimer.singleShot(100, self._grab_background)
 
     def apply_glass(self):
@@ -178,6 +188,10 @@ class GoldenHoursWidget(QWidget):
         self._marquee_x = float(WIDGET_W)
 
     # ── Timers ───────────────────────────────────────────────────────────────
+
+    def _refresh_usage(self):
+        self._usage = usage_reader.get_stats()
+        self.update()
 
     def _on_tick(self):
         self._status = logic.get_status()
@@ -423,8 +437,37 @@ class GoldenHoursWidget(QWidget):
             p.drawText(QRectF(LM, 65, w - LM * 2, 40),
                        Qt.AlignLeft | Qt.AlignVCenter, "Акция не активна")
 
+        # ── Claude Code usage stats ──────────────────────────────────────────
+        show_usage = self._cfg.get("show_usage_stats", True)
+        if show_usage and self._usage.get("available"):
+            # Thin divider before usage section
+            udiv = QLinearGradient(LM, 0, w - LM, 0)
+            udiv.setColorAt(0.0, QColor(255, 255, 255, 0))
+            udiv.setColorAt(0.15, QColor(255, 255, 255, 18))
+            udiv.setColorAt(0.85, QColor(255, 255, 255, 18))
+            udiv.setColorAt(1.0, QColor(255, 255, 255, 0))
+            p.setPen(QPen(QBrush(udiv), 1.0))
+            p.drawLine(LM, 136, w - LM, 136)
+
+            u = self._usage
+            today_msg  = u.get("today_messages", 0)
+            week_msg   = u.get("week_messages", 0)
+            inp_tok    = usage_reader.fmt_tokens(u.get("input_tokens", 0))
+            out_tok    = usage_reader.fmt_tokens(u.get("output_tokens", 0))
+
+            usage_clr = QColor(170, 170, 190, 160)
+            p.setFont(self._font_label)
+            p.setPen(QPen(usage_clr))
+            line1 = f"\u2709  {today_msg} сообщ. сегодня   {week_msg} за 7 дней"
+            p.drawText(QRectF(LM, 140, w - LM * 2, 15), Qt.AlignLeft | Qt.AlignVCenter, line1)
+
+            p.setFont(self._font_info)
+            p.setPen(QPen(QColor(140, 140, 165, 130)))
+            line2 = f"\u25cb  {inp_tok} вход · {out_tok} исх (всего токенов)"
+            p.drawText(QRectF(LM, 156, w - LM * 2, 14), Qt.AlignLeft | Qt.AlignVCenter, line2)
+
         # ── Marquee ──────────────────────────────────────────────────────────
-        marquee_y = 138
+        marquee_y = 176
         if self._cfg.get("marquee_enabled", True) and self._marquee_text:
             p.setFont(self._font_marquee)
             if state == "golden":
@@ -513,7 +556,9 @@ class GoldenHoursWidget(QWidget):
         # Resume expensive timers
         self._anim_timer.start(33)
         self._bg_timer.start(1500)
+        self._usage_timer.start(60_000)
         QTimer.singleShot(200, self._grab_background)
+        QTimer.singleShot(300, self._refresh_usage)
 
     def hideEvent(self, event):
         super().hideEvent(event)
@@ -521,6 +566,7 @@ class GoldenHoursWidget(QWidget):
         # Pause expensive timers while hidden — saves CPU & memory
         self._anim_timer.stop()
         self._bg_timer.stop()
+        self._usage_timer.stop()
         self._bg_blur = None  # free cached pixmap
 
     def reload_settings(self):
