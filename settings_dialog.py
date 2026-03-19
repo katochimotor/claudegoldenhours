@@ -12,7 +12,7 @@ import autostart
 import settings
 
 DIALOG_W = 300
-DIALOG_H = 385
+DIALOG_H = 345
 RADIUS   = 18
 
 
@@ -94,10 +94,6 @@ class SettingsDialog(QWidget):
         self._cb_compact.setChecked(self._cfg.get("compact_mode", True))
         self._cb_compact.toggled.connect(lambda v: self._save("compact_mode", v))
 
-        self._cb_usage = _StyledCheckBox("Показывать статистику Claude Code")
-        self._cb_usage.setChecked(self._cfg.get("show_usage_stats", True))
-        self._cb_usage.toggled.connect(lambda v: self._save("show_usage_stats", v))
-
         self._cb_autostart = _StyledCheckBox("Запускать с Windows")
         self._cb_autostart.setChecked(autostart.is_enabled())
         self._cb_autostart.toggled.connect(self._toggle_autostart)
@@ -107,7 +103,6 @@ class SettingsDialog(QWidget):
         layout.addWidget(self._cb_popup_end)
         layout.addWidget(self._cb_marquee)
         layout.addWidget(self._cb_compact)
-        layout.addWidget(self._cb_usage)
         layout.addWidget(self._cb_autostart)
         layout.addStretch()
 
@@ -202,5 +197,4 @@ class SettingsDialog(QWidget):
         self._cb_popup_end.setChecked(self._cfg.get("popup_before_golden_end", True))
         self._cb_marquee.setChecked(self._cfg.get("marquee_enabled", True))
         self._cb_compact.setChecked(self._cfg.get("compact_mode", True))
-        self._cb_usage.setChecked(self._cfg.get("show_usage_stats", True))
         self._cb_autostart.setChecked(autostart.is_enabled())

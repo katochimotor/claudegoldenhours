@@ -14,7 +14,6 @@ from PyQt5.QtGui import (
 from PyQt5.QtWidgets import QApplication, QGraphicsBlurEffect, QGraphicsScene, QGraphicsPixmapItem, QWidget
 
 import logic
-import usage_reader
 
 STRIP_H = 36
 STRIP_W = 340
@@ -28,7 +27,6 @@ class CompactStripWidget(QWidget):
         super().__init__()
         self._anim_phase: float = 0.0
         self._status: dict = {}
-        self._usage: dict = {}
         self._bg_blur: QPixmap | None = None
 
         self._setup_window()
@@ -82,17 +80,8 @@ class CompactStripWidget(QWidget):
         self._bg_timer.timeout.connect(self._grab_background)
         self._bg_timer.start(2000)
 
-        self._usage_timer = QTimer(self)
-        self._usage_timer.timeout.connect(self._refresh_usage)
-        self._usage_timer.start(60_000)
-
         self._on_tick()
-        self._refresh_usage()
         QTimer.singleShot(100, self._grab_background)
-
-    def _refresh_usage(self):
-        self._usage = usage_reader.get_stats()
-        self.update()
 
     def _on_tick(self):
         self._status = logic.get_status()
@@ -231,14 +220,6 @@ class CompactStripWidget(QWidget):
         text_x = LM + dot_r * 2 + 8
         p.drawText(QRectF(text_x, 0, 140, h), Qt.AlignLeft | Qt.AlignVCenter, status_text)
 
-        # Usage: ✉N message count (today)
-        if self._usage.get("available"):
-            msg_count = self._usage.get("today_messages", 0)
-            p.setFont(self._font_label)
-            p.setPen(QPen(QColor(160, 160, 185, 140)))
-            p.drawText(QRectF(w - 200, 0, 62, h), Qt.AlignRight | Qt.AlignVCenter,
-                       f"\u2709 {msg_count}")
-
         # Countdown
         cd = self._status.get("countdown_seconds")
         if cd is not None:
@@ -298,14 +279,11 @@ class CompactStripWidget(QWidget):
         # Resume timers
         self._anim_timer.start(33)
         self._bg_timer.start(2000)
-        self._usage_timer.start(60_000)
         QTimer.singleShot(150, self._grab_background)
-        QTimer.singleShot(250, self._refresh_usage)
 
     def hideEvent(self, event):
         super().hideEvent(event)
         # Pause expensive timers while hidden — saves CPU & memory
         self._anim_timer.stop()
         self._bg_timer.stop()
-        self._usage_timer.stop()
         self._bg_blur = None  # free cached pixmap
